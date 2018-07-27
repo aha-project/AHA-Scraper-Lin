@@ -14,3 +14,5 @@ To run the scraper:
 1. `cd` to the directory containing the script
 1. Ensure the script is executable with `chmod +x ./AHA-Scraper-Linux.sh`
 1. Run the script by typing `./AHA-Scraper-Linux.sh`
+
+The resulting `BinaryAnalysis.csv` can either be viewed in a text/spreadsheets app (such as Excel) or visualized in the [AHA-GUI](https://github.com/aha-project/AHA-GUI).
