@@ -6,6 +6,9 @@ Developed by ESIC, Washington State University.
 # User Instructions
 [Click here for user walkthrough / documentation](https://aha-project.github.io/)
 
+# Warning / Bugs
+Initial Linux support is debuting in late July 2018. For the next several weeks, there are some known bugs we are working on fixing, and probably some that are left to find. There is no implied waranty, or liability assumed by us if you run this, but so far on RHEL7/CentOS7/Kali2018.2/Ubuntu18.04 everything seems to mostly work. BinaryAnalysis.csv files may require light tweaking to get to render properly in the AHA-GUI (usually because a field is missing/invalid). We're working on it, this warning will be removed at such time that our known bugs list is smaller :)
+
 # Scraper usage
 Clone or download the repo from github
 
