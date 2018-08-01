@@ -106,7 +106,7 @@ ASLR () {
 			SysASLR='FALSE'
 		fi
 	fi 
-	if [ DEBUG ] ; then
+	if [ $DEBUG -gt 2 ] ; then
 		echo "SysASLR: $SysASLR"
 	fi
 }
@@ -127,7 +127,7 @@ PIE_Binary() {
 			PieBinary='TRUE'
 		fi
 	fi
-	if [ DEBUG ] ; then
+	if [ $DEBUG -gt 1 ] ; then
 		echo "PieBinary: $PieBinary"
 	fi
 }
@@ -148,13 +148,13 @@ PIE_Process() {
 		elif [[ "$type" = *'DYN'* ]] ; then
 			PieProcess='TRUE'
 		else
-			if [ DEBUG ] ; then
+			if [ $DEBUG -gt 0 ] ; then
 				echo 'Input is not an ELF file, cannot determine if PIE'
 			fi
 			PieProcess='FALSE'
 		fi
 	fi
-	if [ DEBUG ] ; then
+	if [ $DEBUG -gt 1 ] ; then
 		echo "PieProcess: $PieProcess"
 	fi
 }
@@ -192,24 +192,24 @@ RELRO ()
 		#Check for RELRO support
 		if readelf -l "${ProcessPath}" 2>/dev/null | grep -q 'GNU_RELRO'; then
 			if readelf -d "${ProcessPath}" 2>/dev/null | grep -q 'BIND_NOW'; then
-				if [ DEBUG ] ; then
+				if [ $DEBUG -gt 2 ] ; then
 					echo 'Full RELRO'
 				fi
 				RELRO='TRUE'
 			else
-				if [ DEBUG ] ; then
+				if [ $DEBUG -gt 2 ] ; then
 					echo 'Partial RELRO'
 				fi
 				RELRO='PARTIAL'
 			fi
 		else
-			if [ DEBUG ] ; then
+			if [ $DEBUG -gt 2 ] ; then
 				echo 'No RELRO'
 			fi
 			RELRO='FALSE'
 		fi
 	else
-		if [ DEBUG ] ; then
+		if [ $DEBUG -gt 0 ] ; then
 			echo -e 'Cannot read Program Headers. Please run as root.'
 		fi
 	fi
@@ -225,24 +225,18 @@ Stack_Canary () {
 	fi
 	if readelf -s "${ProcessPath}" 2>/dev/null | grep -q 'Symbol table'; then
 		if readelf -s "${ProcessPath}" 2>/dev/n,ull | grep -q '__stack_chk_fail'; then
-			if [ DEBUG ] ; then
+			if [ $DEBUG -gt 2 ] ; then
 				echo 'StackCanary found'
 			fi
 			StackCanary='TRUE'
 		else
-			if [ DEBUG ] ; then
+			if [ $DEBUG -gt 2 ] ; then
 				echo 'StackCanary found'
 			fi
 			StackCanary='FALSE'
 		fi
 	else
-		#NOTE: Not sure why it's checking for '1'; input is a file path
-#		if [ ${ProcessPath} != "1" ] ; then
-#			echo 'Cannot read Symbol table. Please run as root.'
-#		else
-#			echo 'No symbol table found'
-#		fi
-		if [ DEBUG ] ; then
+		if [ $DEBUG -gt 0 ] ; then
 			echo -e "Cannot read Symbol table. Please run as root.\n If running as root, then the symbol table does not exist for $ProcessPath"
 		fi
 		StackCanary='FALSE'
