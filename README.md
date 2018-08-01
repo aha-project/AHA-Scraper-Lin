@@ -7,7 +7,7 @@ Developed by ESIC, Washington State University.
 [Click here for user walkthrough / documentation](https://aha-project.github.io/)
 
 # Warning / Bugs
-As of August 1st 2018, we have marked this scraper stable. It still has not received a lot of external testing as of yet, but has been tested internally on CentOS 7.5 (a RHEL derivitive), Kali 2018.2 (a Debian derivitive). 
+As of August 1st 2018, we have marked this scraper stable. It still has not received a lot of external testing as of yet, but has been tested internally on CentOS 7.5 (a RHEL derivitive), Kali 2018.2 (a Debian derivitive), and at present we have no known issues.
 
 There is no implied waranty, or liability assumed by us if you run this, but there should not be anything that can cause side effects either.
 
