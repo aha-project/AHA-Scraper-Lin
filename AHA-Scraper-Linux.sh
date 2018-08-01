@@ -12,6 +12,9 @@
 #Attributes I still need to make a script to get and then parse out:
 	#Info we need: ProcessServices, StrongNaming, HighEntropyVA (haven't confirmed this is/isn't on Linux)
 	#
+	
+#	There is no need to continue after the state is TIME_WAIT
+	
 	#CodeSigning, Authenticode
 #		Validate binaries for each PROC binary path
 #		Use RPM, TripWire, or something similar
@@ -40,6 +43,9 @@
 
 #Debug variable, controls test printing for each function output
 DEBUG=1
+
+#Used to hold the 'cleaned' string 
+CleanedString=''
 
 #global variables, one for each field so it's easy to change formatting and
 #so that parameters can be used for different queries/scripts 
@@ -97,14 +103,14 @@ PaX=''			#Implements least privilege protections for mem pages
 #Learned: about using 'cut'
 file_info () {
 	#Check if ProcessPath is null,
-	if [ "$ProcessPath" = '' ] ; then
+	if [ "${ProcessPath}" = '' ] ; then
 		FileDescription=''
 		FileVersion=''
 	else
 		#Get the file description
-		FileDescription=$(file -b $ProcessPath)
+		FileDescription=$(file -b "${ProcessPath}")
 		#Get file version from elf header
-		FileVersion=$(readelf -h $ProcessPath | grep -w "Version" | head -1 | tr -d '[:space:]' | cut -d ':' -f 2)
+		FileVersion=$(readelf -h "${ProcessPath}" | grep -w 'Version' | head -1 | tr -d '[:space:]' | cut -d ':' -f 2)
 		FileDescription=$(echo $FileDescription | cut -d ',' -f 1)
 	fi
 	if [ DEBUG ] ; then
@@ -117,10 +123,31 @@ file_info () {
 #Accepts a process pid, gets and sets the path of the given process' binary
 #Learned: Location of process binaries, how to select specific output of tokenized string
 proc_path() {
+	#Check if PID is empty
+	if [ "$PID" = '0' ] ; then
+		LocalAddress=""
+		ProcessPath=""
+		return
+	fi
 	#Check if file exists
 	if [ -f /proc/$PID/exe ] ; then
-		ProcessPath=$(file /proc/$PID/exe | cut -d ' ' -f 5)
-		ProcessPath=$(clean_string "$ProcessPath")
+	
+		#Select path from output
+		ProcessPath="$(file /proc/$PID/exe)"
+		#clean string
+		clean_string "${ProcessPath}" ; ProcessPath="$CleanedString"
+		#Split on colon
+		ProcessPath=$(echo "${ProcessPath}" | cut -d ':' -f 2)
+		#Get length of string
+		local length=${#ProcessPath}
+		#find first occurrence of '/'
+		for ((i=0; i<length; i++)); do 
+			#if current char is '/'
+			if [ "${ProcessPath:$i:1}" = '/' ] ; then
+				break
+			fi
+		done
+		ProcessPath="${ProcessPath:$i:$length}"
 	else
 		if [ DEBUG ] ; then
 			echo "	Path /proc/$PID/exe does not exist"
@@ -128,12 +155,18 @@ proc_path() {
 		ProcessPath=''
 	fi
 	if [ DEBUG ] ; then
-		echo "ProcessPath: |$ProcessPath|"
+		echo "ProcessPath: |"${ProcessPath}"|"
 	fi
 }
 
 #Gets the process name for current user
 proc_user_name() {
+	#Check if PID is empty
+	if [ "$PID" = '0' ] ; then
+		UserName=""
+		return
+	fi
+	#remove leading and duplicate spaces
 	UserName=$(ps -eo uname,pid | grep $PID |  cut -d ' ' -f 1)
 	if [ DEBUG ] ; then
 		echo "UserName: $UserName"
@@ -144,42 +177,47 @@ proc_user_name() {
 #Learned how to return a single line from grep using 'head'
 proc_created_on() {
 	#Check if PID is empty
-	if [ "$PID" = '' ] ; then
+	if [ "$PID" = '0' ] ; then
+		ProcessCreatedOn=""
 		return
 	fi
 	if [ DEBUG ] ; then
 		echo "	proc_created_on:"
 	fi
-	counter=1
+	local counter=1
 	#Get current date and iterate over to extract the month, day, time, and year
-	epoch=$(date +%s)
-	elapsed=$(ps -eo pid,etimes | grep -w "$PID" | tr -s ' ' | cut -d ' ' -f 3)
-	creation=$(echo $(($epoch - $elapsed)))
-	for var in $(date -d @$creation | tr -s ' ' | cut -d ' ' -f 2,3,4,6); do 
+	local epoch=$(date +%s)
+	#Select time information for PID and clean string
+	local elapsed=$(ps -eo pid,etimes | grep -w "$PID") ; clean_string "$elapsed" ; elapsed=$CleanedString
+	#select time elapsed
+	elapsed=$(echo "$elapsed" | cut -d ' ' -f 2)
+	echo -e "\tepoch: |$epoch|\n\telapsed: |$elapsed|"
+	local creation=$(echo $(($epoch - $elapsed)))
+	for var in $(date -d "@$creation" | tr -s ' ' | cut -d ' ' -f 2,3,4,6); do 
 		case $counter in 
 				1)
-					month=$var
+					local month=$var
 					if [ DEBUG ] ; then 
 						echo -e "\t\tMonth: $var"
 					fi
 				;;
 				2)
-					day=$var
+					local day=$var
 					if [ DEBUG ] ; then 
 						echo -e "\t\tDay: $day"
 					fi
 				;;
 				3)
 					#Split var into 2
-					hour=$(echo $var | cut -d ':' -f 1)
-					min=$(echo $var | cut -d ':' -f 2)
-					time=$(echo "$hour:$min")
+					local hour=$(echo $var | cut -d ':' -f 1)
+					local min=$(echo $var | cut -d ':' -f 2)
+					local time=$(echo "$hour:$min")
 					if [ DEBUG ] ; then 
 						echo -e "\t\tTime: $time"
 					fi
 				;;
 				4)
-					year=$var
+					local year=$var
 					if [ DEBUG ] ; then 
 						echo -e "\t\tYear: $year"
 					fi
@@ -205,13 +243,10 @@ proc_created_on() {
 #Learned: How to remove special chars using 'sed' and tr 
 #TODO: Make a filter of allowed characters instead of deleting ones we don't want
 clean_string () {
-	#remove duplicate spaces
-	string=$(echo $1 | tr -s '[:space:]')
-	#remove leading whitespaces:
-	string="$(echo -e "${string}" | sed -e 's/^[[:space:]]*//')"
+	#remove leading and duplicate spaces
+	local string=$(echo $1 | awk '{$2=$2};1')
 	#Remove unusable single quotes from variable
-	string=$(echo $string | tr -d '\47\140')
-	echo $string
+	CleanedString=$(echo $string | tr -d '\47\140')
 }
 
 #Sets architecture
@@ -296,10 +331,6 @@ parse_netstat() {
 		array=$(echo $line | tr -s '[:space:]' | cut -d ' ' -f 1,4,5,6,7,8,9)
 		#Change Field Separator to space
 		IFS=' '
-		
-#		if [ DEBUG ] ; then 
-#			echo ""
-#		fi
 		#remove extra spaces from the input line, split into vars, and interate over result 
 		for var in $(echo $line | tr -s '[:space:]' | cut -d ' ' -f 1,4,5,6,7,9); do
 			#Skip over first two lines of output from netstat
@@ -355,8 +386,8 @@ parse_netstat() {
 					fi
 					
 					if [ DEBUG ] ; then 
-						echo "RemoteAddress: $RemoteAddress"
-						echo "RemotePort: $RemotePort"
+						echo "RemoteAddress: |$RemoteAddress|"
+						echo "RemotePort: |$RemotePort|"
 						#echo "RemotePortName: $RemotePortName"
 					fi
 				;;
@@ -365,20 +396,25 @@ parse_netstat() {
 					if [ DEBUG ] ; then 
 						echo "State: $State"
 					fi
+					
 					if [[ "$State" = 'LISTEN'* ]] ; then
 						State='LISTENING'
 						RemoteAddress=''
 						RemotePort=''
 						RemotePortName=''
 						if [ DEBUG ] ; then
-							echo -e '\tLISTENING State, setting Address, Remote Port and PortName to empty strings for output'
+							echo -e '\tLISTENING State. Setting: Address, Remote Port and PortName to empty strings '' for CSV output'
 						fi
 					fi
+					#Break out of loop and set 
+#					if [[ "$State" = 'TIME_WAIT' ]] ; then
+#							
+#					fi
 				;;
 				5)
 					User=$var #NOTE: this may not be accurate
 					if [ DEBUG ] ; then 
-						echo "User: $User"
+						echo "User: |$User|"
 					fi
 				;;
 				6)
@@ -386,13 +422,27 @@ parse_netstat() {
 					#NOTE: Cut doesn't always work with '/' if it's not formatted this way: "cut -d/" instead of "cut -d '/'"
 					PID=$(echo $var | cut -d/ -f 1 | awk '{$1=$1;print}')
 					#Get ProcName, only include letters
-					ProcessName=$(echo $var | cut -d/ -f 2 | tr -cd '\101-\132\141-\172')
-					if [ "$PID" = '-' ] ; then
-						PID=''
+						string=$var
+					#Find last occurrence of '/'
+					for ((i=${#string}; i>-1; i--)); do 
+						#if current char is ':'
+						if [ "${string:$i:1}" = '/' ] ; then
+							break
+						fi
+					done
+					ProcessName=$( echo "${string:(($i+1)):${#string}}")
+					clean_string "$ProcessName" ; ProcessName=$CleanedString
+					
+					if [[ "$ProcessName" = '-' ]] || [[ "$ProcessName" = '' ]] ; then
+						ProcessName='Unknown'
+					fi
+					
+					if [[ "$PID" = '-' ]] ; then
+						PID='0'
 					fi 
 					if [ DEBUG ] ; then 
 						echo "PID: |$PID|"
-						echo "ProcessName: $ProcessName"
+						echo "ProcessName: |$ProcessName|"
 					fi
 					#get process info
 					process_wrapper
