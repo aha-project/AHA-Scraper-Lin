@@ -73,6 +73,11 @@
 #Source:checksec.sh
 #Detects if ASLR is enabled for the system
 ASLR () {
+	#Check if PID is empty
+	if [ "$PID" = '0' ] ; then
+		SysASLR="ScanError"
+		return
+	fi
 	if !(cat /proc/$PID/status 2> /dev/null | grep -q 'Name:') ; then
 		echo -e '\tCant perform ASLR Check; priviledge too low'
 		echo -n -e '\tUsing Standard ASLR Check\n'
@@ -111,10 +116,10 @@ ASLR () {
 #Changes:
 PIE_Binary() {
 	#Check for empty path
-	if [ "$ProcessPath" = '' ] ; then
-		PieBinary='FALSE'
+	if [ "${ProcessPath}" = '' ] ; then
+		PieBinary='ScanError'
 	else
-		type=$(readelf -h $ProcessPath | grep 'Type:')
+		type=$(readelf -h "${ProcessPath}" | grep 'Type:')
 		if [[ "$type" = *'EXEC'* ]] ; then
 			PieBinary='FALSE'
 		#If ELF is a dynamic shared object
@@ -133,8 +138,8 @@ PIE_Binary() {
 	#Added in variable assignment
 PIE_Process() {
 	#Check for empty path
-	if [ "$PID" = '' ] ; then
-		PieProcess='FALSE'
+	if [ "$PID" = '0' ] ; then
+		PieProcess='ScanError'
 	else
 		#Read header of process and get the type
 		type=$(readelf -h /proc/$PID/exe| grep -w 'Type:')
@@ -160,13 +165,16 @@ PIE_Process() {
 	#Added in variable support
 #Learned: How to check ELF parameters for execute permissions
 DEP_NX_Enabled () {
-		type=$(readelf -l $ProcessPath | grep 'GNU_STACK' | tr -s ' ' | cut -d ' ' -f 8)
-		#If Execution bit is present, then NX is not enabled
-		if [ "$type" = 'RWE' ] ; then
-			DEP='FALSE'
-		else
-			DEP='TRUE'
-		fi
+	if [[ "${ProcessPath}"='' ]] ; then
+		DEP='ScanError'
+	fi
+	type=$(readelf -l "${ProcessPath}" | grep 'GNU_STACK' | tr -s ' ' | cut -d ' ' -f 8)
+	#If Execution bit is present, then NX is not enabled
+	if [ "$type" = 'RWE' ] ; then
+		DEP='FALSE'
+	else
+		DEP='TRUE'
+	fi
 }
 
 #RELRO support
@@ -176,11 +184,14 @@ DEP_NX_Enabled () {
 	#Modified outputs and variable assignments
 RELRO ()
 {
+	if [[ "${ProcessPath}"='' ]] ; then
+		RELRO='ScanError'
+	fi
 	#Check if we can access Program Header information
-	if readelf -l $ProcessPath | grep -q 'Program Headers:'; then
+	if readelf -l "${ProcessPath}" | grep -q 'Program Headers:'; then
 		#Check for RELRO support
-		if readelf -l $ProcessPath 2>/dev/null | grep -q 'GNU_RELRO'; then
-			if readelf -d $ProcessPath 2>/dev/null | grep -q 'BIND_NOW'; then
+		if readelf -l "${ProcessPath}" 2>/dev/null | grep -q 'GNU_RELRO'; then
+			if readelf -d "${ProcessPath}" 2>/dev/null | grep -q 'BIND_NOW'; then
 				if [ DEBUG ] ; then
 					echo 'Full RELRO'
 				fi
@@ -209,8 +220,11 @@ RELRO ()
 		#removed /exe from readelf path; ProcessPath is an executable
 		#Modified outputs and variable assignments
 Stack_Canary () {
-	if readelf -s $ProcessPath 2>/dev/null | grep -q 'Symbol table'; then
-		if readelf -s $ProcessPath 2>/dev/n,ull | grep -q '__stack_chk_fail'; then
+	if [[ "${ProcessPath}"='' ]] ; then
+		StackCanary='ScanError'
+	fi
+	if readelf -s "${ProcessPath}" 2>/dev/null | grep -q 'Symbol table'; then
+		if readelf -s "${ProcessPath}" 2>/dev/n,ull | grep -q '__stack_chk_fail'; then
 			if [ DEBUG ] ; then
 				echo 'StackCanary found'
 			fi
@@ -223,7 +237,7 @@ Stack_Canary () {
 		fi
 	else
 		#NOTE: Not sure why it's checking for '1'; input is a file path
-#		if [ "$ProcessPath" != "1" ] ; then
+#		if [ ${ProcessPath} != "1" ] ; then
 #			echo 'Cannot read Symbol table. Please run as root.'
 #		else
 #			echo 'No symbol table found'
@@ -237,10 +251,10 @@ Stack_Canary () {
 
 # check process(es)
 proccheck() {
-	if [ "$ProcessPath" = '' ] ; then
-		RELRO='FALSE'
-		StackCanary='FALSE'
-		DEP='FALSE'
+	if [ "${ProcessPath}" = '' ] ; then
+		RELRO='ScanError'
+		StackCanary='ScanError'
+		DEP='ScanError'
 	else
 		RELRO
 		Stack_Canary
