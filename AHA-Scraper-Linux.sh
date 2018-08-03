@@ -131,7 +131,7 @@ proc_user_name() {
 		return
 	fi
 	#remove leading and duplicate spaces
-	UserName=$(ps -eo uname,pid | grep $PID |  cut -d ' ' -f 1)
+	UserName="$(ps -eo uname,pid | grep $PID |  cut -d ' ' -f 1 | awk '$1=$1' )" 
 	if [ $DEBUG -gt 1 ] ; then
 		echo "UserName: $UserName"
 	fi
@@ -154,7 +154,7 @@ proc_created_on() {
 	#Select time information for PID and clean string
 	local elapsed=$(ps -eo pid,etimes | grep -w "$PID") ; clean_string "$elapsed" ; elapsed=$CleanedString
 	#select time elapsed
-	elapsed=$(echo "$elapsed" | cut -d ' ' -f 2)
+	elapsed=$(echo "$elapsed" | cut -d ' ' -f 2 | awk '$1=$1')
 	if [ $DEBUG -gt 2 ] ; then
 		echo -e "\tepoch: |$epoch|\n\telapsed: |$elapsed|"
 	fi
