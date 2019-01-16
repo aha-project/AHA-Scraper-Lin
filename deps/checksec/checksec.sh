@@ -73,6 +73,9 @@
 #Source:checksec.sh
 #Detects if ASLR is enabled for the system
 ASLR () {
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\nASLR()"
+	fi
 	#Check if PID is empty
 	if [ "$PID" = '0' ] ; then
 		SysASLR="ScanError"
@@ -85,9 +88,9 @@ ASLR () {
 	if cat /proc/$PID/status 2> /dev/null | grep -q 'PaX:'; then
 		echo ": "
 		if cat /proc/1/status 2> /dev/null | grep 'PaX:' | grep -q 'R'; then
-			echo 'ASLR enabled'
+			echo -e '\tASLR enabled'
 		else
-			echo 'ASLR disabled'
+			echo -e '\tASLR disabled'
 		fi
 	else
 	# standard Linux 'kernel.randomize_va_space' ASLR support
@@ -106,8 +109,8 @@ ASLR () {
 			SysASLR='FALSE'
 		fi
 	fi 
-	if [ $DEBUG -gt 2 ] ; then
-		echo "SysASLR: $SysASLR"
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\tSysASLR: |$SysASLR|"
 	fi
 }
 
@@ -115,6 +118,9 @@ ASLR () {
 #Check binary for PIE support, implies ASLR is enabled for the binary
 #Changes:
 PIE_Binary() {
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\nPIE_Binary()"
+	fi
 	#Check for empty path
 	if [ "${ProcessPath}" = '' ] ; then
 		PieBinary='ScanError'
@@ -127,9 +133,6 @@ PIE_Binary() {
 			PieBinary='TRUE'
 		fi
 	fi
-	if [ $DEBUG -gt 1 ] ; then
-		echo "PieBinary: $PieBinary"
-	fi
 }
 
 #Check process for PIE support, implies ASLR is enabled for the process
@@ -137,6 +140,9 @@ PIE_Binary() {
 	#Modified readelf to return string for comparison
 	#Added in variable assignment
 PIE_Process() {
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\nPIE_Process()"
+	fi
 	#Check for empty path
 	if [ "$PID" = '0' ] ; then
 		PieProcess='ScanError'
@@ -149,13 +155,13 @@ PIE_Process() {
 			PieProcess='TRUE'
 		else
 			if [ $DEBUG -gt 0 ] ; then
-				echo 'Input is not an ELF file, cannot determine if PIE'
+				echo -e '\tInput is not an ELF file, cannot determine if PIE'
 			fi
 			PieProcess='FALSE'
 		fi
 	fi
-	if [ $DEBUG -gt 1 ] ; then
-		echo "PieProcess: $PieProcess"
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\tPieProcess: |$PieProcess|"
 	fi
 }
 
@@ -165,6 +171,9 @@ PIE_Process() {
 	#Added in variable support
 #Learned: How to check ELF parameters for execute permissions
 DEP_NX_Enabled () {
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\nDEP_NX_Enabled()"
+	fi
 	if [[ "${ProcessPath}"='' ]] ; then
 		DEP='ScanError'
 	fi
@@ -175,6 +184,9 @@ DEP_NX_Enabled () {
 	else
 		DEP='TRUE'
 	fi
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\tDEP: |$DEP|"
+	fi
 }
 
 #RELRO support
@@ -184,6 +196,9 @@ DEP_NX_Enabled () {
 	#Modified outputs and variable assignments
 RELRO ()
 {
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\nRELRO()"
+	fi
 	if [[ "${ProcessPath}"='' ]] ; then
 		RELRO='ScanError'
 	fi
@@ -192,26 +207,29 @@ RELRO ()
 		#Check for RELRO support
 		if readelf -l "${ProcessPath}" 2>/dev/null | grep -q 'GNU_RELRO'; then
 			if readelf -d "${ProcessPath}" 2>/dev/null | grep -q 'BIND_NOW'; then
-				if [ $DEBUG -gt 2 ] ; then
-					echo 'Full RELRO'
+				if [ $DEBUG -gt 1 ] ; then
+					echo -e '\tFull RELRO'
 				fi
 				RELRO='TRUE'
 			else
-				if [ $DEBUG -gt 2 ] ; then
-					echo 'Partial RELRO'
+				if [ $DEBUG -gt 1 ] ; then
+					echo -e '\tPartial RELRO'
 				fi
 				RELRO='PARTIAL'
 			fi
 		else
-			if [ $DEBUG -gt 2 ] ; then
-				echo 'No RELRO'
+			if [ $DEBUG -gt 1 ] ; then
+				echo -e '\tNo RELRO support found'
 			fi
 			RELRO='FALSE'
 		fi
 	else
 		if [ $DEBUG -gt 0 ] ; then
-			echo -e 'Cannot read Program Headers. Please run as root.'
+			echo -e '\tCannot read Program Headers. Please run as root.'
 		fi
+	fi
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\tRELRO: |$RELRO|"
 	fi
 }
 
@@ -220,26 +238,32 @@ RELRO ()
 		#removed /exe from readelf path; ProcessPath is an executable
 		#Modified outputs and variable assignments
 Stack_Canary () {
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\nStack_Canary()"
+	fi
 	if [[ "${ProcessPath}"='' ]] ; then
 		StackCanary='ScanError'
 	fi
 	if readelf -s "${ProcessPath}" 2>/dev/null | grep -q 'Symbol table'; then
 		if readelf -s "${ProcessPath}" 2>/dev/n,ull | grep -q '__stack_chk_fail'; then
-			if [ $DEBUG -gt 2 ] ; then
-				echo 'StackCanary found'
+			if [ $DEBUG -gt 1 ] ; then
+				echo -e '\tStackCanary found'
 			fi
 			StackCanary='TRUE'
 		else
-			if [ $DEBUG -gt 2 ] ; then
-				echo 'StackCanary found'
+			if [ $DEBUG -gt 1 ] ; then
+				echo -e '\tNo StackCanary found'
 			fi
 			StackCanary='FALSE'
 		fi
 	else
 		if [ $DEBUG -gt 0 ] ; then
-			echo -e "Cannot read Symbol table. Please run as root.\n If running as root, then the symbol table does not exist for $ProcessPath"
+			echo -e "\tCannot read Symbol table. Please run as root.\n\t If running as root, then the symbol table does not exist for $ProcessPath"
 		fi
 		StackCanary='FALSE'
+	fi
+	if [ $DEBUG -gt 0 ] ; then
+		echo -e "\tStack Canary: |$StackCanary|"
 	fi
 }
 
