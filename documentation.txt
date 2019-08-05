@@ -1,0 +1,92 @@
+#Manual sections kept here for reference
+LINUX MANUAL SECTIONS
+	The standard sections of the manual include:
+
+	1	User Commands
+	2	System Calls
+	3	C Library Functions
+	4	Devices and Special Files
+	5	File Formats and Conventions
+	6	Games et. al.
+	7	Miscellanea
+	8	System Administration tools and Daemons
+
+	Distributions customize the manual section to their specifics,
+	which often include additional sections.
+
+****************************** Sources of Information ****************************
+Security Overview: 
+https://www.kernel.org/doc/Documentation/
+
+Kernel Documentation: 
+https://www.kernel.org/doc/Documentation/sysctl/kernel.txt
+https://www.kernel.org/doc/Documentation/networking
+https://www.kernel.org/doc/html/latest/admin-guide/kernel-parameters.html
+
+Process Documentation: 
+http://man7.org/linux/man-pages/man5/proc.5.html
+
+
+
+Process Info:
+/proc/cpuinfo		type and information about system processor
+		Look at 'bugs:' and 'flags:'
+		Check for consistency across platforms
+/proc/sys/kernel	Contains kernel values that can be found by using sysctl
+/proc/{pid}/status	Provides PROC status in human readable format
+
+System Info:
+/etc/sysctl.conf 	Kernel config file, overrides kernel defaults
+/sys/devices		devices by physical layout
+/sys/bus		symbolic link to devices
+/sys/block		devices by block
+/sys/class		devices by class
+
+****************************** Tools of Interest *********************************
+Format: 
+program name
+	NOTE: (if any)
+	description
+	parameter1
+	parameter2
+	....
+	parameterN
+
+file -b
+	Get file information and do not prepend filenames to output
+	First parameter is file description, can be used to check for PIE support (doesn't work for older systems)
+	
+
+readelf -h
+	Displays file header information
+	Version: File version
+	Type: File type
+
+readelf -l
+	Displays program header information
+	GNU_STACK, If value excludes execute from RWX, =>NX Support
+	GNU_RELRO, RELRO Support
+
+sysctl -a:
+	Shows all kernel values
+	Check for ASLR under kernel.randomize_va_space
+
+Tools not currently in use:
+
+systemctl: 
+	NOTE:use sysctl -a to show all kernel attribute values
+	may be used to introspect and control the state of the "systemd" system
+	and service manager.
+
+
+chktrust: (Not installed by default)
+	Verify if a PE executable has valid Authenticode
+
+****************************** Files of Interest *********************************
+/etc/sysctl.conf:
+	Source Address Verification:
+		Prevents some spoofing attacks
+		net.ipv4.conf.default.rp_filter=1
+		net.ipv4.conf.all.rp_filter=1
+	
+	IP Packet Forwarding:
