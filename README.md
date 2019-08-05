@@ -21,4 +21,3 @@ To run the scraper:
 
 The resulting `BinaryAnalysis.csv` can either be viewed in a text/spreadsheets app (such as Excel) or visualized in the [AHA-GUI](https://github.com/aha-project/AHA-GUI).
 
-Note: If the script is not executable you can fix that by running `chmod +x ./AHA-Scraper-Linux.sh`
